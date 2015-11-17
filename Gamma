@@ -1,0 +1,173 @@
+library("nortest")
+library("splines")                  
+library("graphics")
+library("stats")
+library("survival")
+library("graphics")
+library("MASS")
+library("tseries")
+library("car")
+library("forecast")
+library("xts")
+
+rm(list=ls())
+#setwd("/Volumes/AGUA/Tesis_fer")
+setwd("E:/Tesis_fer")
+
+###Leer serie
+Gamma<-read.table("Gamma25.txt",header=FALSE,dec=".",sep=" ")
+G1<- numeric(48)
+for(i in 1:48){G1[i]=Gamma[i,1]}
+start.date <- as.POSIXct("2005-11-18 22:25:00")
+end.date <- as.POSIXct("2005-11-21 02:25:00")
+Fecha <- seq(start.date, by="2 hours", end.date)
+Serie2<- xts(G1[12:38], Fecha)
+
+G1 <- ts(Serie2,start=1,end=26,frequency=1)
+plot(Serie2)
+
+adf<-adf.test(G1,alternative="explosive")
+adf$p.value
+#No hay suficiente evidencia estad?stica al 95% de confianza
+#para rechazar que Gamma sea estacionario
+a=7#length(G1)/4
+b=a+1
+c=a+2
+d=length(G1)-1
+covarianzas<-acf(G1,lag=b,type="covariance")
+covar=numeric((2*length(covarianzas$acf))-1)
+covar[b]=covarianzas$acf[1]
+for(i in 1:a)
+{covar[i]=covarianzas$acf[c-i]
+covar[i+b]=covarianzas$acf[i+1]}#covar=gamma_n(*)
+
+L=1
+C=matrix(numeric((L+1)^2),ncol=L+1,nrow=L+1)
+for(i in 1:(L+1)){
+  for(j in 1:(L+1)){
+    for(m in 1:a-(L+1))
+    {C[i,j]=((covar[m+b]*covar[m-i+j+b])+
+               (covar[m+j+b]*covar[m-i+b])) + C[i,j]}}}
+C
+gamma=matrix(numeric(d*b),ncol=b,nrow=d)
+
+for(k in L:d)
+{ for(i in 1:b){
+  covark<-acf(G1[1:(k+1)],lag=b,type="covariance")
+  gamma[k,i]<-covark$acf[i]}}
+#View(gamma)
+
+diferencias=matrix(numeric((L+1)*d),ncol=(L+1),nrow=d)
+
+for(k in L:d)  
+{ for(i in 1:(L+1))
+{diferencias[k,i]=gamma[k,i]-covar[a+i]}}
+#View(diferencias)   
+
+G=numeric(d)
+
+for(k in L:d)
+{ g=(C^-1) %*% diferencias[k,]
+g=t(diferencias[k,]) %*% g
+G[k]=((k^2)*g)/48
+}
+G
+T=max(G)
+T# punto de cambio K*=19/Oct/8hrs
+par(mfrow=c(2,1))
+plot(seq(1,d),G,type="l")
+abline(h=2.408,col="blue")
+plot(Serie2)
+
+
+rm(list=ls())
+###Leer serie
+Gamma<-read.table("Gamma25.txt",header=FALSE,dec=".",sep=" ")
+G1<- numeric(48)
+for(i in 1:48){G1[i]=Gamma[i,1]}
+start.date <- as.POSIXct("2005-11-19 08:25:00")
+end.date <- as.POSIXct("2005-11-21 02:25:00")
+Fecha <- seq(start.date, by="2 hours", end.date)
+length(Fecha)
+Serie2<- xts(G1[17:38], Fecha)
+
+G1 <- ts(Serie2,start=1,end=22,frequency=1)
+plot(Serie2)
+
+adf<-adf.test(G1,alternative="explosive")
+adf$p.value
+#No hay suficiente evidencia estad?stica al 95% de confianza
+#para rechazar que Gamma sea estacionario
+a=6#length(G1)/4
+b=a+1
+c=a+2
+d=length(G1)-1
+covarianzas<-acf(G1,lag=b,type="covariance")
+covar=numeric((2*length(covarianzas$acf))-1)
+covar[b]=covarianzas$acf[1]
+for(i in 1:a)
+{covar[i]=covarianzas$acf[c-i]
+ covar[i+b]=covarianzas$acf[i+1]}#covar=gamma_n(*)
+
+L=1
+C=matrix(numeric((L+1)^2),ncol=L+1,nrow=L+1)
+for(i in 1:(L+1)){
+  for(j in 1:(L+1)){
+    for(m in 1:a-(L+1))
+    {C[i,j]=((covar[m+b]*covar[m-i+j+b])+
+               (covar[m+j+b]*covar[m-i+b])) + C[i,j]}}}
+C
+gamma=matrix(numeric(d*b),ncol=b,nrow=d)
+
+for(k in L:d)
+{ for(i in 1:b){
+  covark<-acf(G1[1:(k+1)],lag=b,type="covariance")
+  gamma[k,i]<-covark$acf[i]}}
+#View(gamma)
+
+diferencias=matrix(numeric((L+1)*d),ncol=(L+1),nrow=d)
+
+for(k in L:d)  
+{ for(i in 1:(L+1))
+{diferencias[k,i]=gamma[k,i]-covar[a+i]}}
+#View(diferencias)   
+
+G=numeric(d)
+
+for(k in L:d)
+{ g=(C^-1) %*% diferencias[k,]
+  g=t(diferencias[k,]) %*% g
+  G[k]=((k^2)*g)/48
+}
+G
+T=max(G)
+T# Ya no hay puntos de cambio
+
+c<-boxplot(G1)
+summary(c)
+acf(G1)
+pacf(G1)
+modelo1 <- arima(G1,order=c(1,0,1))
+modelo2 <- arima(G1,order=c(2,0,2))
+modelo3 <- arima(G1,order=c(3,0,3))
+modelo1$aic
+modelo2$aic
+modelo3$aic
+
+acf(modelo2$residuals)
+pacf(modelo2$residuals)
+confint(modelo2)
+coeficientes <- numeric(5)
+for(i in 1:5){
+  coeficientes[i]=abs(modelo2$coef[i]/sqrt(modelo2$var.coef[i,i]))
+}
+coeficientes #Todos significativos con un nivel de significancia del 5%
+
+Box.test(modelo2$residuals)
+shapiro.test(modelo2$residuals)
+mean(modelo2$residuals)
+#Al 95% de confianza no rechazamos que los residuales del modelo final 
+#son independientes y se distribuyen de manera normal
+#podemos considerar que se distribuyen como un ruido blanco normal
+#Modelo final ARMA(2,2)
+modelo2
