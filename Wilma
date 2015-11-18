@@ -1,0 +1,168 @@
+library("nortest")
+library("splines")                  
+library("graphics")
+library("stats")
+library("survival")
+library("graphics")
+library("MASS")
+library("tseries")
+library("car")
+library("forecast")
+library("xts")
+
+rm(list=ls())
+#setwd("/Users/christianivan/Documents/Mafer")
+#setwd("C:/Users/MSernaM/Documents/Datos")
+setwd("G:/Tesis_fer")
+###Lectura y gr?fica de la serie
+M0<-read.table("W25.txt",header=FALSE,sep = " ",dec = ".")
+M<-numeric(84)
+for(i in 1:84){M[i]=M0[i,1]}
+
+start.date <- as.POSIXct("2005-10-19 00:25:00")
+end.date <- as.POSIXct("2005-10-24 22:25:00")
+time.index <- seq(start.date, by="2 hours", end.date)
+Fecha <- time.index
+comienzo<-1
+Serie1<- xts(M[comienzo:(comienzo+length(Fecha)-1)], Fecha)
+plot(Serie1)
+S<-ts(Serie1)
+
+adf<-adf.test(S,alternative="explosive")
+adf$p.value
+#No hay suficiente evidencia estad?stica al 95% de confianza
+#para rechazar que Wilma sea estacionario
+a=length(S)%/%4
+b=a+1
+c=a+2
+d=length(S)-1
+covarianzas<-acf(S,lag=b,type="covariance")
+covar=numeric((2*length(covarianzas$acf))-1)
+covar[b]=covarianzas$acf[1]
+for(i in 1:a)
+{covar[i]=covarianzas$acf[c-i]
+ covar[i+b]=covarianzas$acf[i+1]}#covar=gamma_n(*)
+
+L=1
+C=matrix(numeric((L+1)^2),ncol=L+1,nrow=L+1)
+for(i in 1:(L+1)){
+  for(j in 1:(L+1)){
+    for(m in 1:a-(L+1))
+    {C[i,j]=((covar[m+b]*covar[m-i+j+b])+
+               (covar[m+j+b]*covar[m-i+b])) + C[i,j] }}}
+C
+gamma=matrix(numeric(d*b),ncol=b,nrow=d)
+
+for(k in L:d)
+{ for(i in 1:b){
+  covark<-acf(S[1:(k+1)],lag=b,type="covariance")
+  gamma[k,i]<-covark$acf[i]}}
+# View(gamma)
+
+diferencias=matrix(numeric((L+1)*d),ncol=(L+1),nrow=d)
+
+for(k in L:d)  
+{ for(i in 1:(L+1))
+{diferencias[k,i]=gamma[k,i]-covar[a+i]}}
+#View(diferencias)   
+
+G=numeric(d)
+
+for(k in L:d)
+{ g=(C^-1) %*% diferencias[k,]
+  g=t(diferencias[k,]) %*% g
+  G[k]=((k^2)*g)/60}
+G
+T=max(G)
+T#punto de corte k*= 21/Oct/6 a.m.
+for(i in 1:length(G)){
+  if(G[i]==T){corte=i}}
+X11()
+par(mfrow=c(2,1))
+plot(seq(1,d),G,type="l")
+abline(h=2.408,col="red")
+plot(Serie1)
+abline(v=Fecha[corte],col="blue")
+####################################################
+start.date <- as.POSIXct("2005-10-19 00:25:00")
+end.date <- as.POSIXct("2005-10-23 22:25:00")
+time.index <- seq(start.date, by="2 hours", end.date)
+Fecha <- time.index
+Serie1<- xts(M[1:60], Fecha)
+plot(Serie1)
+S<-ts(Serie1)
+
+
+adf<-adf.test(S,alternative="explosive")
+adf$p.value
+#No hay suficiente evidencia estad?stica al 95% de confianza
+#para rechazar que Wilma sea estacionario
+a=length(S)%/%4
+b=a+1
+c=a+2
+d=length(S)-1
+covarianzas<-acf(S,lag=b,type="covariance")
+covar=numeric((2*length(covarianzas$acf))-1)
+covar[b]=covarianzas$acf[1]
+for(i in 1:a)
+{covar[i]=covarianzas$acf[c-i]
+ covar[i+b]=covarianzas$acf[i+1]}#covar=gamma_n(*)
+
+L=1
+C=matrix(numeric((L+1)^2),ncol=L+1,nrow=L+1)
+for(i in 1:(L+1)){
+  for(j in 1:(L+1)){
+    for(m in 1:a-(L+1))
+    {C[i,j]=((covar[m+b]*covar[m-i+j+b])+
+               (covar[m+j+b]*covar[m-i+b])) + C[i,j] }}}
+C
+gamma=matrix(numeric(d*b),ncol=b,nrow=d)
+
+for(k in L:d)
+{ for(i in 1:b){
+  covark<-acf(S[1:(k+1)],lag=b,type="covariance")
+  gamma[k,i]<-covark$acf[i]}}
+# View(gamma)
+
+diferencias=matrix(numeric((L+1)*d),ncol=(L+1),nrow=d)
+
+for(k in L:d)  
+{ for(i in 1:(L+1))
+{diferencias[k,i]=gamma[k,i]-covar[a+i]}}
+#View(diferencias)   
+
+G=numeric(d)
+
+for(k in L:d)
+{ g=(C^-1) %*% diferencias[k,]
+  g=t(diferencias[k,]) %*% g
+  G[k]=((k^2)*g)/60}
+G
+T=max(G)
+T#ya no hay puntos de corte
+X11()
+par(mfrow=c(2,1))
+plot(seq(1,d),G,type="l")
+abline(h=2.408,col="red")
+plot(Serie1)
+###############################Ajuste de modelo
+c <- boxplot(S)
+summary(c)
+acf(S)
+pacf(S)
+modelo0 <- arima(S,order=c(0,0,0))
+modelo1 <- arima(S,order=c(1,0,1))
+modelo0$aic
+modelo1$aic
+
+acf(modelo0$residuals)
+pacf(modelo0$residuals)
+confint(modelo0)
+modelo0
+20.257/.2273#intercepto al 95% significativo
+
+Box.test(modelo0$residuals)
+shapiro.test(modelo0$residuals)
+#Al 95% de confianza no rechazamos que los residuales sean independientes
+#Al 95% de confianza rechazamos que se distribuyen de manera normal
+plot(Serie1)
