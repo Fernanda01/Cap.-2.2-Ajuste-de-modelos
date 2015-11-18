@@ -73,11 +73,14 @@ for(k in L:d)
 G
 T=max(G)
 T#punto de corte k*=20 3/Oct/6 a.m.
-X11()
+for(i in 1:length(G)){
+  if(G[i]==T){corte=i}}
+
 par(mfrow=c(2,1))
 plot(seq(1,d),G,type="l")
 abline(h=2.408,col="red")
 plot(Serie1)
+abline(v=Fecha[corte],col="blue")
 
 #Veamos a Stan del 1/Oct/16hrs al 3/Oct/6hrs 
 rm(list=ls())
@@ -88,11 +91,12 @@ setwd("E:/Tesis_fer")
 Stan<-read.table("Stan25.txt",header=FALSE,dec=".",sep=" ")
 S <- numeric(60)
 for(i in 1:60){S[i]=Stan[i,1]}
-start.date <- as.POSIXct("2005-10-1 04:25:00")
+start.date <- as.POSIXct("2005-10-1 16:25:00")
 end.date <- as.POSIXct("2005-10-3 06:25:00")
 time.index <- seq(start.date, by="2 hours", end.date)
 Fecha <- time.index
-Serie1<- xts(S[9:34], Fecha)
+f<-length(Fecha)
+Serie1<- xts(S[9:(9+f-1)], Fecha)
 plot(Serie1)
 S<-ts(Serie1)
 
@@ -100,7 +104,7 @@ adf<-adf.test(S,alternative="explosive")
 adf$p.value
 #No hay suficiente evidencia estad?stica al 95% de confianza
 #para rechazar que Stan sea estacionario
-a=length(S)/4
+a=length(S)%/%4
 b=a+1
 c=a+2
 d=length(S)-1
@@ -143,14 +147,20 @@ for(k in L:d)
 G
 T=max(G)
 T#ya no hay cambios, ahora ajustemos un modelo
+plot(S)
 c<-boxplot(S)
 summary(c)
-acf(S)
-pacf(S)
+acf(S,lag=20)
+pacf(S,lag=20)
 
-modelo1 <- arima(S,order=c(1,0,1))
-modelo2 <- arima(S,order=c(2,0,2))
-modelo3 <- arima(S,order=c(3,0,3))
+regresion <- lm(time(S)~S)
+boxcox(regresion,lambda=seq(0,1.5,1/10))
+Datos<-bcPower(S,lambda=0.7)
+
+modelo1 <- arima(Datos,order=c(1,0,1))
+modelo2 <- arima(Datos,order=c(2,0,2))
+modelo3 <- arima(Datos,order=c(3,0,3))
+
 modelo1$aic
 modelo2$aic
 modelo3$aic
@@ -164,13 +174,13 @@ for(i in 1:5){
 }
 coeficientes
 
-modelo4 <- arima(S,order=c(2,0,2),transform.pars=FALSE,
+modelo4 <- arima(Datos,order=c(2,0,2),transform.pars=FALSE,
                  fixed=c(NA,NA,0,NA,NA))
 acf(modelo4$residuals)
 pacf(modelo4$residuals)
 confint(modelo4)
 modelo4
-.4582/.138;.7222/.1231;1/.1609;20.5129/.1061#Todos significativos
+.4316/.1566;.7452/.131;1/.2609;10.4167/.0507#Todos significativos
 
 Box.test(modelo4$residuals)
 shapiro.test(modelo4$residuals)
