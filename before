@@ -1,0 +1,68 @@
+library("nortest")
+library("MASS")
+library("stats")
+library("tseries")
+library("splines")
+library("xts")
+library("graphics")
+library("forecast")
+library("car")
+
+rm(list=ls())
+setwd("/Volumes/AGUA/Tesis_fer")
+A00 <- read.table("After.txt",header=FALSE,sep="",dec=".")
+A0 <- numeric(347)
+for(i in 1:347){A0[i] <-A00[i,1]}
+
+After <- ts(A0)
+plot(After)
+c<-boxplot(After)
+summary(c)
+
+acf(After)
+pacf(After)#WN
+
+#Corrección de outliers
+outliers <- numeric(13)
+for(i in 1:347){
+  for(j in 1:13)
+  if(After[i]==c$out[j]){A0[i]=(After[i-1]+After[i+1])/2;
+                         outliers[j]=i}}
+#con esta corrección quitamos efectos de katrina 
+outliers
+d <- boxplot(A0)
+summary(d)
+plot(After)
+abline(v=outliers,col="red")
+
+regresion <- lm(A0~time(A0))
+boxcox(regresion,lambda=seq(-8,8,1/10))
+A <- log(A0)
+acf(A)
+acf(A0)
+pacf(A)
+pacf(A0)
+
+diferencia1 <- diff(A,lag=6,differences=1)
+plot.ts(diferencia1)
+acf(diferencia1)
+pacf(diferencia1)
+
+modelo0 <- arima(A,order=c(0,0,0))
+modelo1 <- arima(A,order=c(1,0,1))
+modelo2 <- arima(A,order=c(2,0,2))
+
+modelo0$aic
+modelo1$aic
+modelo2$aic
+
+#ARMA(1,1)
+acf(modelo1$residuals)
+pacf(modelo1$residuals)
+confint(modelo1)
+for (i in 1:3){print(abs(modelo1$coef[i]/sqrt(modelo1$var.coef[i,i])))}
+#Todos significativos
+
+Box.test(modelo1$residuals)#Residuales independientes al 95% de confianza
+shapiro.test(modelo1$residuals)
+#Residuales al 95% de confianza distribuidos de manera normal
