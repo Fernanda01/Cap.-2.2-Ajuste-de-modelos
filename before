@@ -1,0 +1,156 @@
+library("nortest")
+library("splines")                  
+library("graphics")
+library("stats")
+library("survival")
+library("MASS")
+library("tseries")
+library("car")
+library("forecast")
+library("xts")
+
+rm(list=ls())
+#setwd("G:/Tesis_fer")
+setwd("/Volumes/AGUA/Tesis_fer")
+A0<-read.table("AntesWilma1.txt",header=FALSE,sep="",dec = ".")
+A1<-read.table("AntesWilma2.txt",header=FALSE,sep="",dec = ".")
+A00<-numeric(632)
+A11<-numeric(188)
+for(i in 1:632){A00[i]=A0[i,1]}
+for(i in 1:188){A11[i]=A1[i,1]}
+
+Before<-ts(c(A00,A11))
+plot(Before)
+acf(Before)
+pacf(Before)#Componente estacional s=6 entonces D=1
+
+c <- boxplot(Before)
+summary(c)
+regresion<-lm(Before~time(Before))
+boxcox(regresion,seq(2,4,1/10))
+datos <- bcPower(Before,lambda=3,jacobian.adjusted=FALSE)
+
+diferencia1 <- diff(Before,lag=6,differences=1)
+plot(diferencia1)
+acf(diferencia1)
+pacf(diferencia1)
+
+modelo1 <- arima(Before,order=c(1,0,1),seasonal=list(order=c(0,1,0),period=6))
+modelo2 <- arima(Before,order=c(2,0,2),seasonal=list(order=c(0,1,0),period=6))
+modelo3 <- arima(Before,order=c(3,0,3),seasonal=list(order=c(0,1,0),period=6))
+modelo4 <- arima(Before,order=c(4,0,4),seasonal=list(order=c(0,1,0),period=6))
+
+modelo1$aic
+modelo2$aic
+modelo3$aic
+modelo4$aic
+
+acf(modelo3$residuals)
+pacf(modelo3$residuals)
+
+modelo4 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6))
+acf(modelo4$residuals)
+pacf(modelo4$residuals)
+confint(modelo4)
+
+coeficientes=numeric(12)
+for(i in 1:12){
+  coeficientes[i]=abs(modelo4$coef[i]/sqrt(modelo4$var.coef[i,i]))
+}
+min(coeficientes) #ar1
+
+modelo5 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                 transform.pars=FALSE,
+                 fixed=c(0 ,NA,NA,NA,NA,NA,
+                         NA,NA,NA,NA,NA,NA))
+acf(modelo5$residuals)
+pacf(modelo5$residuals)
+modelo5
+sd=c(1,.039,.04,.0413,.0402,.0387,.0199,.0198,.0225,.0246,.0217,.0193)
+coeficientes=abs(modelo5$coef/sd)
+coeficientes#ar6
+
+modelo6 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                 transform.pars=FALSE,
+                 fixed=c(0 ,NA,NA,NA,NA,0,
+                         NA,NA,NA,NA,NA,NA))
+acf(modelo6$residuals)
+pacf(modelo6$residuals)
+modelo6
+sd=c(1,.039,.0397,.0411,.0399,1,.0188,.0192,.0219,.0241,.0206,.0176)
+coeficientes=abs(modelo6$coef/sd)
+coeficientes#ma3
+
+modelo7 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                 transform.pars=FALSE,
+                 fixed=c(0 ,NA,NA,NA,NA,0,
+                         NA,NA,0,NA,NA,NA))
+acf(modelo7$residuals)
+pacf(modelo7$residuals)
+modelo7
+sd=c(1,.0374,.0357,.0377,.0385,1,.0181,.0159,1,.0169,.0166,.0171)
+coeficientes=abs(modelo7$coef/sd)
+coeficientes#ar5
+
+modelo8 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                 transform.pars=FALSE,
+                 fixed=c(0 ,NA,NA,NA,0,0,
+                         NA,NA,0,NA,NA,NA))
+acf(modelo8$residuals)
+pacf(modelo8$residuals)
+modelo8
+sd=c(1,.0373,.0356,.0375,1,1,.018,.0157,1,.0162,.0157,.0168)
+coeficientes=abs(modelo8$coef/sd)
+coeficientes#ar2
+
+modelo9 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                 transform.pars=FALSE,
+                 fixed=c(0 ,0,NA,NA,0,0,
+                         NA,NA,0,NA,NA,NA))
+acf(modelo9$residuals,ylim=c(-.1,.1))
+pacf(modelo9$residuals)
+modelo9
+sd=c(1,1,.0357,.0376,1,1,.0167,.0142,1,.0151,.0155,.0163)
+coeficientes=abs(modelo9$coef/sd)
+coeficientes#ma5
+
+modelo10 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                 transform.pars=FALSE,
+                 fixed=c(0 ,0,NA,NA,0,0,
+                         NA,NA,0,NA,0,NA))
+acf(modelo10$residuals,ylim=c(-.1,.1))
+pacf(modelo10$residuals)
+modelo10
+sd=c(1,1,.0357,.037,1,1,.0165,.0145,1,.0145,1,.0142)
+coeficientes=abs(modelo10$coef/sd)
+coeficientes#ar4
+
+modelo11 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                  transform.pars=FALSE,
+                  fixed=c(0 ,0,NA,0,0,0,
+                          NA,NA,0,NA,0,NA))
+acf(modelo11$residuals,ylim=c(-.1,.1))
+pacf(modelo11$residuals)
+modelo11
+sd=c(1,1,.0358,1,1,1,.0158,.0153,1,.0161,1,.0151)
+coeficientes=abs(modelo11$coef/sd)
+coeficientes#ma4
+
+modelo12 <- arima(Before,order=c(6,0,6),seasonal=list(order=c(0,1,0),period=6),
+                  transform.pars=FALSE,
+                  fixed=c(0 ,0,NA,0,0,0,
+                          NA,NA,0,0,0,NA))
+acf(modelo12$residuals,ylim=c(-.1,.1))
+pacf(modelo12$residuals)
+modelo12
+sd=c(1,1,.0357,1,1,1,.0133,.0148,1,1,1,.0142)
+coeficientes=abs(modelo12$coef/sd)
+coeficientes#Todos significativos
+
+#modelo final SARIMA(3,0,6)x(0,1,0)_6
+Box.test(modelo12$residuals)
+#no rechazamos independencia en residuales al 95% de confianza
+shapiro.test(modelo12$residuals)
+#rechazamos distribución normal al 95% de confianza
+modelo12
+confint(modelo12)
